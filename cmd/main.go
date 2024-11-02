@@ -1,46 +1,55 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
-	"net/http"
-	"os/signal"
-	"syscall"
-	"time"
-
-	"rename-files-go/internal/server"
+	"os"
+	"strconv"
+	"strings"
 )
-
-func gracefulShutdown(apiServer *http.Server) {
-	// Create context that listens for the interrupt signal from the OS.
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
-
-	// Listen for the interrupt signal.
-	<-ctx.Done()
-
-	log.Println("shutting down gracefully, press Ctrl+C again to force")
-
-	// The context is used to inform the server it has 5 seconds to finish
-	// the request it is currently handling
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-	if err := apiServer.Shutdown(ctx); err != nil {
-		log.Printf("Server forced to shutdown with error: %v", err)
-	}
-
-	log.Println("Server exiting")
-}
 
 func main() {
 
-	server := server.NewServer()
-
-	go gracefulShutdown(server)
-
-	err := server.ListenAndServe()
-	if err != nil && err != http.ErrServerClosed {
-		panic(fmt.Sprintf("http server error: %s", err))
+	// read all files from "sample" directory
+	files, err := os.ReadDir("./sample")
+	if err != nil {
+		log.Fatal(err)
 	}
+
+	for _, file := range files {
+		if !file.IsDir() {
+			res, err := matchAndConvert(file.Name())
+			if err != nil {
+				continue
+			}
+
+			log.Println("Renaming", file.Name(), "to", res)
+
+			err = os.Rename(fmt.Sprintf("./sample/%s", file.Name()), fmt.Sprintf("./sample/%s", res))
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+	}
+}
+
+// Takes "file copy 1.txt"
+// Returns "file_1.txt"
+// or error if no match
+func matchAndConvert(filename string) (string, error) {
+	pieces := strings.Split(filename, ".")
+
+	// Get the extension
+	extn := pieces[len(pieces)-1]
+
+	tmp := strings.Split(pieces[0], " ")
+
+	// extract the name and change positions
+	fName := strings.Join(tmp[:len(tmp)-2], "")
+	fNum, err := strconv.Atoi(tmp[len(tmp)-1])
+	if err != nil {
+		return "", fmt.Errorf("%s no match", filename)
+	}
+
+	return fmt.Sprintf("%s_%d.%s", fName, fNum, extn), nil
 }
