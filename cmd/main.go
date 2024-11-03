@@ -9,9 +9,15 @@ import (
 )
 
 func main() {
+	if len(os.Args) < 2 {
+		fmt.Println("Please provide a directory name")
+		return
+	}
 
-	// read all files from "sample" directory
-	files, err := os.ReadDir("./sample")
+	dirName := os.Args[1]
+	fmt.Println("Reading files from", dirName)
+
+	files, err := os.ReadDir(dirName)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -23,7 +29,7 @@ func main() {
 				continue
 			}
 
-			log.Println("Renaming", file.Name(), "to", res)
+			fmt.Printf("Renaming \"%s\" to \"%s\" \n", file.Name(), res)
 
 			err = os.Rename(fmt.Sprintf("./sample/%s", file.Name()), fmt.Sprintf("./sample/%s", res))
 			if err != nil {
@@ -43,6 +49,9 @@ func matchAndConvert(filename string) (string, error) {
 	extn := pieces[len(pieces)-1]
 
 	tmp := strings.Split(pieces[0], " ")
+	if (len(tmp) < 2) || (tmp[len(tmp)-2] != "copy") {
+		return "", fmt.Errorf("%s no match", filename)
+	}
 
 	// extract the name and change positions
 	fName := strings.Join(tmp[:len(tmp)-2], "")
