@@ -26,6 +26,7 @@ func main() {
 	}
 
 	fmt.Println("Reading files from", dirName, "recursively:", *isRecursive)
+	count := 0
 
 	if *isRecursive {
 		err := filepath.WalkDir(dirName, func(path string, file os.DirEntry, err error) error {
@@ -47,6 +48,7 @@ func main() {
 			tmp := strings.Split(path, "/")
 			tmp[len(tmp)-1] = res
 
+			count++
 			err = os.Rename(path, filepath.Join(tmp...))
 			if err != nil {
 				log.Fatal(err)
@@ -73,6 +75,7 @@ func main() {
 
 				fmt.Printf("Renaming \"%s\" to \"%s\" \n", file.Name(), res)
 
+				count++
 				err = os.Rename(fmt.Sprintf("./sample/%s", file.Name()), fmt.Sprintf("./sample/%s", res))
 				if err != nil {
 					log.Fatal(err)
@@ -81,7 +84,7 @@ func main() {
 		}
 	}
 
-	fmt.Println("Done")
+	fmt.Println("Finished,", count, "Files renamed")
 
 }
 
