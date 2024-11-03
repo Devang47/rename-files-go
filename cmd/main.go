@@ -1,42 +1,88 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
 
 func main() {
-	if len(os.Args) < 2 {
+	isRecursive := flag.Bool("r", false, "Recursively rename files in subdirectories")
+	flag.Parse()
+
+	dirName := ""
+	if len(os.Args) == 1 {
 		fmt.Println("Please provide a directory name")
 		return
+	} else if len(os.Args) > 1 {
+		dirName = os.Args[len(os.Args)-1]
+	}
+	if dirName == "" || dirName == "-r" {
+		dirName = "."
 	}
 
-	dirName := os.Args[1]
-	fmt.Println("Reading files from", dirName)
+	fmt.Println("Reading files from", dirName, "recursively:", *isRecursive)
 
-	files, err := os.ReadDir(dirName)
-	if err != nil {
-		log.Fatal(err)
-	}
+	if *isRecursive {
+		err := filepath.WalkDir(dirName, func(path string, file os.DirEntry, err error) error {
+			if err != nil {
+				log.Fatal(err)
+			}
 
-	for _, file := range files {
-		if !file.IsDir() {
+			if file.IsDir() {
+				return nil
+			}
+
 			res, err := matchAndConvert(file.Name())
 			if err != nil {
-				continue
+				return nil
 			}
 
 			fmt.Printf("Renaming \"%s\" to \"%s\" \n", file.Name(), res)
 
-			err = os.Rename(fmt.Sprintf("./sample/%s", file.Name()), fmt.Sprintf("./sample/%s", res))
+			tmp := strings.Split(path, "/")
+			tmp[len(tmp)-1] = res
+
+			err = os.Rename(path, filepath.Join(tmp...))
 			if err != nil {
 				log.Fatal(err)
 			}
+
+			return nil
+
+		})
+		if err != nil {
+			log.Fatal(err)
+		}
+	} else {
+		files, err := os.ReadDir(dirName)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		for _, file := range files {
+			if !file.IsDir() {
+				res, err := matchAndConvert(file.Name())
+				if err != nil {
+					continue
+				}
+
+				fmt.Printf("Renaming \"%s\" to \"%s\" \n", file.Name(), res)
+
+				err = os.Rename(fmt.Sprintf("./sample/%s", file.Name()), fmt.Sprintf("./sample/%s", res))
+				if err != nil {
+					log.Fatal(err)
+				}
+			}
 		}
 	}
+
+	fmt.Println("Done")
+
 }
 
 // Takes "file copy 1.txt"
